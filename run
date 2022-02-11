@@ -2,10 +2,29 @@
 
 DIR=${PWD##*/}
 
-main() {
-    for CMD in "$@";do
-        $CMD
-    done
+
+check() {
+    install-dev
+    source venv/bin/activate
+    _confirm_previous_command
+    echo "Running isort..."
+    python -m isort --gitignore .
+    echo "Running black..."
+    python -m black . --exclude=venv
+    echo "Running pydocstyle..."
+    python -m pydocstyle -v index.py log.py aws_/*
+    echo "Running pyright..."
+    python -m pyright 
+    echo "Running flake8..."
+    python -m flake8 --exclude=venv,aws_/schema.py --max-complexity=4 --max-line-length=88 --extend-ignore=E203
+}
+
+clean() {
+    rm -rf venv
+}
+
+help() {
+    echo "Please refer main function in the run script for valid options"
 }
 
 install() {
@@ -20,27 +39,17 @@ install() {
     pip install -r requirements.txt > /dev/null
 }
 
-test() {
-    install
+install-dev() {
+    [ -d venv ] && echo "venv directory already exists, 'clean' to create again" && return
+    echo "Started 'install-dev' process..."
+    python3 -m venv venv
+    _confirm_previous_command
     source venv/bin/activate
     _confirm_previous_command
-    python index.py
-}
-
-check() {
-    install
-    source venv/bin/activate
-    _confirm_previous_command
-    echo "Running isort..."
-    python -m isort --gitignore .
-    echo "Running black..."
-    python -m black . --exclude=venv
-    echo "Running pydocstyle..."
-    python -m pydocstyle -v index.py log.py aws_/*
-    echo "Running pyright..."
-    python -m pyright 
-    echo "Running flake8..."
-    python -m flake8 --exclude=venv,aws_/schema.py --max-complexity=4 --max-line-length=88 --extend-ignore=E203
+    pip install --upgrade pip > /dev/null
+    echo "Installing dependencies..."
+    pip install -r requirements_dev.txt > /dev/null
+    pip install -r requirements.txt > /dev/null
 }
 
 push() {
@@ -58,8 +67,15 @@ push() {
     git push origin ${BRANCH}
 }
 
-help() {
-    echo "Please refer main function in the run script for valid options"
+start() {
+    install
+    source venv/bin/activate
+    _confirm_previous_command
+    python index.py
+}
+
+test() {
+    source venv/bin/activate && python -m pytest tests
 }
 
 _confirm_previous_command() {
@@ -69,4 +85,8 @@ _confirm_previous_command() {
     fi
 }
 
-main $*
+
+for CMD in "$@";do
+    $CMD
+done
+
