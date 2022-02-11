@@ -1,0 +1,72 @@
+#!/bin/bash
+
+DIR=${PWD##*/}
+
+main() {
+    for CMD in "$@";do
+        $CMD
+    done
+}
+
+install() {
+    [ -d venv ] && echo "venv directory already exists, 'clean' to create again" && return
+    echo "Started 'install' process..."
+    python3 -m venv venv
+    _confirm_previous_command
+    source venv/bin/activate
+    _confirm_previous_command
+    pip install --upgrade pip > /dev/null
+    echo "Installing dependencies..."
+    pip install -r requirements.txt > /dev/null
+}
+
+test() {
+    install
+    source venv/bin/activate
+    _confirm_previous_command
+    python index.py
+}
+
+check() {
+    install
+    source venv/bin/activate
+    _confirm_previous_command
+    echo "Running isort..."
+    python -m isort --gitignore .
+    echo "Running black..."
+    python -m black . --exclude=venv
+    echo "Running pydocstyle..."
+    python -m pydocstyle -v index.py log.py aws_/*
+    echo "Running pyright..."
+    python -m pyright 
+    echo "Running flake8..."
+    python -m flake8 --exclude=venv,aws_/schema.py --max-complexity=4 --max-line-length=88 --extend-ignore=E203
+}
+
+push() {
+    check
+    _confirm_previous_command
+    clean
+    git status --short
+    echo -n "Please confirm the above changes (y/n): "
+    read QUIT
+    [ "${QUIT}" = "y" ] && git commit -a
+    _confirm_previous_command
+    echo -n "Enter branch (master): "
+    read BRANCH
+    BRANCH=${BRANCH:-master}
+    git push origin ${BRANCH}
+}
+
+help() {
+    echo "Please refer main function in the run script for valid options"
+}
+
+_confirm_previous_command() {
+    if [ $? -ne 0 ]; then
+        echo "Stopping the script..."
+        exit 1
+    fi
+}
+
+main $*
