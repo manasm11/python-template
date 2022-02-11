@@ -15,6 +15,7 @@ levels = {
 
 LOG_PARSED_JSON = True
 
+
 def _p(type, caller, *args, **kwargs):
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
     isPrintLog = levels[LOG_LEVEL] <= levels[type]
